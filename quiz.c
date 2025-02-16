@@ -6,6 +6,7 @@
 #include <windows.h>
 #endif
 
+
 void clearScreen();
 void printCentered(const char* text);
 void printBox(const char* text);
