@@ -1,197 +1,191 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <stdbool.h>
+#include <time.h>
 #ifdef _WIN32
-#include <windows.h>
+    #include <windows.h>
+    #define CLEAR "cls"
+#else
+    #include <unistd.h>
+    #define CLEAR "clear"
 #endif
 
+#define RESET   "\x1b[0m"
+#define RED     "\x1b[31m"
+#define GREEN   "\x1b[32m"
+#define YELLOW  "\x1b[33m"
+#define BLUE    "\x1b[34m"
+#define MAGENTA "\x1b[35m"
+#define CYAN    "\x1b[36m"
+#define BOLD    "\x1b[1m"
 
-void clearScreen();
-void printCentered(const char* text);
-void printBox(const char* text);
-void printProgressBar(int current, int total);
-void setConsoleColor(int color);
-void resetColor();
+#define TOP_LEFT     "╔"
+#define TOP_RIGHT    "╗"
+#define BOTTOM_LEFT  "╚"
+#define BOTTOM_RIGHT "╝"
+#define HORIZONTAL   "═"
+#define VERTICAL     "║"
 
 typedef struct {
-    char question[256];
-    char options[4][64];
+    char question[200];
+    char options[4][50];
     int correct_answer;
 } Question;
 
-int main() {
-    #ifdef _WIN32
-    system("color 0F");
-    #endif
+typedef struct {
+    int score;
+    int total_questions;
+    int current_question;
+    time_t start_time;
+} QuizState;
 
-    Question questions[] = {
-        {
-            "What is the capital of France?",
-            {"London", "Berlin", "Paris", "Madrid"},
-            2
-        },
-        {
-            "Which programming language is this quiz written in?",
-            {"Python", "Java", "C", "JavaScript"},
-            2
-        },
-        {
-            "What is 2 + 2?",
-            {"3", "4", "5", "6"},
-            1
-        },
-        {
-            "Which planet is known as the Red Planet?",
-            {"Venus", "Jupiter", "Mars", "Saturn"},
-            2
-        }
-    };
-
-    int total_questions = sizeof(questions) / sizeof(questions[0]);
-    int score = 0;
-    char choice;
-
-    clearScreen();
-    setConsoleColor(6);
-    printBox("Welcome to the Modern Quiz Application!");
-    resetColor();
-    printf("\n\nPress Enter to start...");
-    getchar();
-
-    for (int i = 0; i < total_questions; i++) {
-        clearScreen();
-        
-        setConsoleColor(3);
-        printf("\nQuestion %d/%d\n", i + 1, total_questions);
-        printProgressBar(i + 1, total_questions);
-        resetColor();
-        
-        printf("\n\n");
-        setConsoleColor(7);
-        printBox(questions[i].question);
-        resetColor();
-        
-        printf("\n");
-        for (int j = 0; j < 4; j++) {
-            setConsoleColor(2);
-            printf("    %c) ", 'A' + j);
-            resetColor();
-            printf("%s\n", questions[i].options[j]);
-        }
-
-        printf("\nYour answer (A/B/C/D): ");
-        do {
-            choice = toupper(getchar());
-            while (getchar() != '\n');
-        } while (choice < 'A' || choice > 'D');
-
-        if ((choice - 'A') == questions[i].correct_answer) {
-            score++;
-            setConsoleColor(10);
-            printCentered("✓ Correct!");
-        } else {
-            setConsoleColor(12);
-            printCentered("✗ Incorrect!");
-            printf("\nThe correct answer was: %c\n", 'A' + questions[i].correct_answer);
-        }
-        resetColor();
-        
-        printf("\nPress Enter to continue...");
-        getchar();
+Question questions[] = {
+    {
+        "What is the capital of France?",
+        {"London", "Berlin", "Paris", "Madrid"},
+        2
+    },
+    {
+        "Which planet is known as the Red Planet?",
+        {"Venus", "Mars", "Jupiter", "Saturn"},
+        1
+    },
+    {
+        "What is the largest mammal in the world?",
+        {"African Elephant", "Blue Whale", "Giraffe", "Polar Bear"},
+        1
+    },
+    {
+        "Who painted the Mona Lisa?",
+        {"Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Michelangelo"},
+        2
+    },
+    {
+        "What is the chemical symbol for gold?",
+        {"Ag", "Fe", "Au", "Cu"},
+        2
     }
+};
 
-    clearScreen();
-    setConsoleColor(6);
-    printBox("Quiz Complete!");
-    printf("\n\n");
-    
-    setConsoleColor(7);
-    char score_text[64];
-    sprintf(score_text, "Your Score: %d/%d (%.1f%%)", 
-            score, total_questions, (float)score/total_questions * 100);
-    printCentered(score_text);
-    
-    printf("\n\n");
-    if (score == total_questions) {
-        setConsoleColor(10);
-        printCentered("Perfect Score! Excellent work!");
-    } else if (score >= total_questions * 0.7) {
-        setConsoleColor(11);
-        printCentered("Great job! Well done!");
-    } else if (score >= total_questions * 0.5) {
-        setConsoleColor(14);
-        printCentered("Good effort! Keep practicing!");
-    } else {
-        setConsoleColor(12);
-        printCentered("Keep studying! You can do better!");
-    }
-    resetColor();
-
-    printf("\n\nPress Enter to exit...");
-    getchar();
-    return 0;
-}
-
-void clearScreen() {
-    #ifdef _WIN32
-        system("cls");
-    #else
-        system("clear");
-    #endif
-}
-
-void printCentered(const char* text) {
+void center_text(const char* text) {
     int padding = (80 - strlen(text)) / 2;
     printf("%*s%s\n", padding, "", text);
 }
 
-void printBox(const char* text) {
-    int len = strlen(text);
-    printf("\n    ╔");
-    for (int i = 0; i < len + 2; i++) printf("═");
-    printf("╗\n");
-    printf("    ║ %s ║\n", text);
-    printf("    ╚");
-    for (int i = 0; i < len + 2; i++) printf("═");
-    printf("╝\n");
+void draw_box(int width, int height) {
+    printf("%s", TOP_LEFT);
+    for (int i = 0; i < width - 2; i++) printf("%s", HORIZONTAL);
+    printf("%s\n", TOP_RIGHT);
+
+    for (int i = 0; i < height; i++) {
+        printf("%s", VERTICAL);
+        for (int j = 0; j < width - 2; j++) printf(" ");
+        printf("%s\n", VERTICAL);
+    }
+
+    printf("%s", BOTTOM_LEFT);
+    for (int i = 0; i < width - 2; i++) printf("%s", HORIZONTAL);
+    printf("%s\n", BOTTOM_RIGHT);
 }
 
-void printProgressBar(int current, int total) {
-    const int bar_width = 40;
-    int progress = (int)((float)current/total * bar_width);
+void display_progress_bar(QuizState state) {
+    int barWidth = 40;
+    int progress = (state.current_question * barWidth) / state.total_questions;
     
-    printf("    [");
-    for (int i = 0; i < bar_width; i++) {
-        if (i < progress) printf("■");
+    printf("\nProgress: [");
+    for (int i = 0; i < barWidth; i++) {
+        if (i < progress) printf("%s■%s", GREEN, RESET);
         else printf("□");
     }
-    printf("] %d%%", (int)((float)current/total * 100));
+    printf("] %d/%d\n", state.current_question, state.total_questions);
 }
 
-void setConsoleColor(int color) {
-    #ifdef _WIN32
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, color);
-    #else
-        switch(color) {
-            case 2: printf("\033[32m"); break;
-            case 3: printf("\033[36m"); break;
-            case 6: printf("\033[33m"); break;
-            case 7: printf("\033[37m"); break;
-            case 10: printf("\033[92m"); break;
-            case 11: printf("\033[96m"); break;
-            case 12: printf("\033[91m"); break;
-            case 14: printf("\033[93m"); break;
+void display_welcome_screen() {
+    system(CLEAR);
+    printf("\n\n");
+    center_text("╔══════════════════════════════════════╗");
+    center_text("║        Modern Quiz Application        ║");
+    center_text("╚══════════════════════════════════════╝");
+    printf("\n\n");
+    center_text("Press ENTER to start the quiz...");
+    getchar();
+}
+
+void display_question(Question q, QuizState state) {
+    system(CLEAR);
+    printf("\n%s%s=== Question %d of %d ===%s\n\n", BOLD, CYAN, 
+           state.current_question + 1, state.total_questions, RESET);
+    
+    display_progress_bar(state);
+    
+    printf("\n%s%s%s\n\n", YELLOW, q.question, RESET);
+    
+    for (int i = 0; i < 4; i++) {
+        printf("%s%c) %s%s\n", CYAN, 'A' + i, RESET, q.options[i]);
+    }
+    printf("\nYour answer (A/B/C/D): ");
+}
+
+void display_result(QuizState state) {
+    system(CLEAR);
+    printf("\n\n");
+    center_text("╔══════════════════════════════════════╗");
+    center_text("║             Quiz Results             ║");
+    center_text("╚══════════════════════════════════════╝");
+    printf("\n\n");
+    
+    float percentage = (float)state.score / state.total_questions * 100;
+    printf("%sFinal Score: %d/%d (%.1f%%)%s\n", BOLD, state.score, 
+           state.total_questions, percentage, RESET);
+    
+    time_t end_time = time(NULL);
+    int duration = end_time - state.start_time;
+    printf("Time taken: %d minutes %d seconds\n", duration / 60, duration % 60);
+    
+    printf("\nPerformance: ");
+    if (percentage >= 80) printf("%sExcellent!%s", GREEN, RESET);
+    else if (percentage >= 60) printf("%sGood!%s", YELLOW, RESET);
+    else printf("%sNeeds Improvement%s", RED, RESET);
+    
+    printf("\n\nPress ENTER to exit...");
+    getchar();
+}
+
+void initialize_quiz(QuizState *state) {
+    state->score = 0;
+    state->current_question = 0;
+    state->total_questions = sizeof(questions) / sizeof(questions[0]);
+    state->start_time = time(NULL);
+}
+
+int main() {
+    QuizState state;
+    char answer;
+    
+    initialize_quiz(&state);
+    display_welcome_screen();
+    
+    while (state.current_question < state.total_questions) {
+        display_question(questions[state.current_question], state);
+        scanf(" %c", &answer);
+        getchar();
+        
+        int user_answer = toupper(answer) - 'A';
+        
+        if (user_answer == questions[state.current_question].correct_answer) {
+            printf("\n%sCorrect!%s\n", GREEN, RESET);
+            state.score++;
+        } else {
+            printf("\n%sIncorrect! The correct answer was %c.%s\n", 
+                   RED, 'A' + questions[state.current_question].correct_answer, RESET);
         }
-    #endif
-}
-
-void resetColor() {
-    #ifdef _WIN32
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, 7);
-    #else
-        printf("\033[0m");
-    #endif
+        
+        printf("\nPress ENTER to continue...");
+        getchar();
+        state.current_question++;
+    }
+    
+    display_result(state);
+    return 0;
 }
