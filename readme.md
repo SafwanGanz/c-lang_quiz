@@ -25,8 +25,9 @@ A sleek, interactive command-line quiz application written in C that features a 
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/modern-quiz-app.git
-cd modern-quiz-app
+git clone https://github.com/SafwanGanz/c-lang
+-quiz.git
+cd c-lang_quiz
 ```
 
 2. Compile the application
@@ -106,9 +107,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Inspired by modern CLI applications
 - Built with cross-platform compatibility in mind
 - Designed for educational purposes
-
-## 📞 Contact
-
-Your Name - [@yourusername](https://twitter.com/yourusername)
-
-Project Link: [https://github.com/yourusername/modern-quiz-app](https://github.com/yourusername/modern-quiz-app)
