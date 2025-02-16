@@ -52,6 +52,8 @@ quiz.exe  # On Windows
    - Press Enter to continue
 4. View your final score and performance assessment
 
+![Video](https://g.top4top.io/m_333404opz0.mp4)
+
 ## 🛠️ Customization
 
 ### Adding New Questions
